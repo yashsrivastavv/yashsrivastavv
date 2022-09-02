@@ -2,8 +2,8 @@
 My name is Yash and I'm a computer science student from India. Here's some info about me!
 
 ⚡Work Experience: <br>
-- Animation Intern at ConnectEd [Remote. Winter 2022]
-- Video Editor Intern at EkPrayaas NGO [Remote. August 2022]
+- Animation Intern at ConnectEd [Remote. Winter 2021]
+- Video Editor Intern at EkPrayaas NGO [Remote. August 2021]
 
 🔭 Current Project:
 - CCTNS in GD and FIR (Python/Dask + NLTK)
