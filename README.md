@@ -1,14 +1,16 @@
 ### Hi there 👋
-My name is Yash and I'm a computer science student from India. Here's some info about me!
+My name is Yash and I'm a Computer Science and Artificial Intelligence student from India. Here's some info about me!
 
 ⚡Work Experience: <br>
 - Animation Intern at ConnectEd [Remote. Winter 2021]
 - Video Editor Intern at EkPrayaas NGO [Remote. Summer 2021]
 
 🔭 Current Project:
+- BlockScan
 - CCTNS in GD and FIR (Python/Dask + NLTK)
 
 🌱 Interests:
+- Blockchain
 - Machine Learning
 
 💬 Reach me by email or LinkedIn: iyashsrivastav@gmail.com | https://www.linkedin.com/in/yash-srivastava-/
