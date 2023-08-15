@@ -10,7 +10,7 @@ My name is Yash and I'm a Computer Science and Artificial Intelligence student f
 - CCTNS in GD and FIR (Python/Dask + NLTK)
 
 🌱 Interests:
-- Blockchain
+- QR-Integrity
 - Machine Learning
 
 💬 Reach me by email or LinkedIn: iyashsrivastav@gmail.com | https://www.linkedin.com/in/yash-srivastava-/
