@@ -6,11 +6,11 @@ My name is Yash and I'm a Computer Science and Artificial Intelligence student f
 - Video Editor Intern at EkPrayaas NGO [Remote. Summer 2021]
 
 🔭 Current Project:
-- BlockScan
+- QR-Integrity
 - CCTNS in GD and FIR (Python/Dask + NLTK)
 
 🌱 Interests:
-- QR-Integrity
+- Blockchain
 - Machine Learning
 
 💬 Reach me by email or LinkedIn: iyashsrivastav@gmail.com | https://www.linkedin.com/in/yash-srivastava-/
