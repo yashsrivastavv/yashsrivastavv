@@ -13,7 +13,7 @@ My name is Yash and I'm a Computer Science and Artificial Intelligence student f
 - Blockchain
 - Machine Learning
 
-💬 Reach me by email or LinkedIn: iyashsrivastav@gmail.com | https://www.linkedin.com/in/yash-srivastava-/
+💬 Reach me by email or LinkedIn: iyashsrivastav@gmail.com | https://www.linkedin.com/in/yash-stv/
 
 
 <!--
