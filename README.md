@@ -2,6 +2,7 @@
 My name is Yash and I'm a Computer Science and Artificial Intelligence student from India. Here's some info about me!
 
 ⚡Work Experience: <br>
+- Software Engineer at Naukri.com [Hybrid, Current]
 - Animation Intern at ConnectEd [Remote. Winter 2021]
 - Video Editor Intern at EkPrayaas NGO [Remote. Summer 2021]
 
@@ -10,7 +11,7 @@ My name is Yash and I'm a Computer Science and Artificial Intelligence student f
 - CCTNS in GD and FIR (Python/Dask + NLTK)
 
 🌱 Interests:
-- Blockchain
+- Artifical Intelligence
 - Machine Learning
 
 💬 Reach me by email or LinkedIn: iyashsrivastav@gmail.com | https://www.linkedin.com/in/yash-stv/
