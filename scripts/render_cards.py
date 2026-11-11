@@ -219,23 +219,24 @@ def plural(n, w):
 
 
 # ---- ASCII portrait -----------------------------------------------------------------
-RAMP = " .:-=+*%@"
-ROW_ASPECT = 1.9  # monospace row pitch / character width that looks square
+RAMP = " .`:-=+*cs#%@"  # sparse -> dense
+ROW_ASPECT = 15 / 8  # row pitch / character width of one ASCII cell
+PORTRAIT_SECS = 2.0  # how long the portrait takes to print
 PORTRAIT_TXT = os.path.join(ROOT, "assets", "portrait.txt")  # made once by scripts/make_portrait.py
 
 
-def to_ascii(lum, cols, rows, dense_dark, gamma=1.3, floor=0.0):
-    """Greyscale image -> rows of characters. Dense glyphs mark dark (or bright) areas."""
-    from PIL import Image, ImageOps
-    img = ImageOps.autocontrast(lum.resize((cols, rows), Image.LANCZOS), cutoff=1)
+def to_ascii(lum, cols, rows, dense_dark=True, gamma=1.18, white_floor=0.80):
+    """Greyscale image -> rows of characters. Near-white is forced blank so backgrounds vanish."""
+    from PIL import Image
+    img = lum.resize((cols, rows), Image.LANCZOS)
     out = []
     for y in range(rows):
         line = ""
         for x in range(cols):
-            v = img.getpixel((x, y)) / 255
-            v = 1 - v if dense_dark else v
-            v = 0 if v < floor else v
-            line += RAMP[min(len(RAMP) - 1, int((v ** gamma) * len(RAMP)))]
+            v = (img.getpixel((x, y)) / 255) ** gamma
+            if not dense_dark:
+                v = 1 - v
+            line += " " if v >= white_floor else RAMP[max(0, min(len(RAMP) - 1, int((1 - v) * (len(RAMP) - 1) + 0.5)))]
         out.append(line)
     return out
 
@@ -253,7 +254,7 @@ def avatar_rows(data_uri, cols, rows):
     w, h = lum.size
     s = int(min(w, h) * 0.86)
     lum = lum.crop(((w - s) // 2, (h - s) // 2, (w - s) // 2 + s, (h - s) // 2 + s))
-    return to_ascii(lum, cols, rows, dense_dark=False, gamma=2.4)
+    return to_ascii(lum, cols, rows, dense_dark=False, gamma=1.0, white_floor=0.99)
 
 
 def portrait_rows(d, cols, rows):
@@ -277,22 +278,28 @@ def hero(d):
     ly = ty + 25 * 3 + 40
     c.text(40, ly, SITE[0], 15, "m", delay=0.8)
     c.add(c.anim(arrow(40 + measure(SITE[0], 15, "m") + 12, ly - 14, BLUE), "rise", 0.85))
-    art = portrait_rows(d, 72, 38)
+    art = portrait_rows(d, 120, round(120 / ROW_ASPECT))
     if art:
         cols, rows = max(len(x) for x in art), len(art)
         c.chars["m"].update("".join(art))
-        adv = measure("M", 1, "m")
-        fs = min(316 / (cols * adv), 368 / (rows * adv * ROW_ASPECT))  # fit a 316 x 368 box
-        pitch = fs * adv * ROW_ASPECT     # row pitch that keeps the picture's proportions
-        x0, y0 = 474, (440 - rows * pitch) / 2
+        cw = min(316 / cols, 372 / (rows * ROW_ASPECT))  # cell width: fit a 316 x 372 box
+        ch = cw * ROW_ASPECT
+        x0, y0, fs = 474, (440 - rows * ch) / 2, ch * 0.86
+        rd = PORTRAIT_SECS / rows
         for r, line in enumerate(art):
-            body = line.strip()
-            if not body:
+            if not line.strip():
                 continue
-            lead = len(line) - len(line.lstrip())
-            t = (f'<text x="{x0 + lead * fs * adv:.1f}" y="{y0 + (r + 1) * pitch:.1f}" font-size="{fs:.2f}" '
-                 f'class="f-m" opacity=".85">{html.escape(body)}</text>')
-            c.add(c.anim(t, "fade", 0.25 + r * 0.03))
+            ty = y0 + r * ch
+            c.add(f'<text x="{x0}" y="{ty + ch * 0.74:.1f}" font-size="{fs:.2f}" class="f-m" opacity=".9" '
+                  f'textLength="{len(line) * cw:.1f}" lengthAdjust="spacing">{html.escape(line)}</text>')
+            if not STATIC:  # a paper-coloured cover shrinks away left to right, with a cursor on its edge
+                t0 = 0.3 + r * rd
+                c.add(f'<rect class="smil" x="{x0}" y="{ty:.1f}" height="{ch + .6:.2f}" width="{cols * cw:.1f}" fill="{PAPER}">'
+                      f'<animate attributeName="x" from="{x0}" to="{x0 + cols * cw:.1f}" begin="{t0:.3f}s" dur="{rd:.3f}s" fill="freeze"/>'
+                      f'<animate attributeName="width" from="{cols * cw:.1f}" to="0" begin="{t0:.3f}s" dur="{rd:.3f}s" fill="freeze"/></rect>'
+                      f'<rect class="smil" y="{ty + .5:.1f}" width="{max(cw * 2, 3):.1f}" height="{ch - 1:.2f}" fill="{INK}" opacity="0">'
+                      f'<animate attributeName="x" from="{x0}" to="{x0 + cols * cw:.1f}" begin="{t0:.3f}s" dur="{rd:.3f}s" fill="freeze"/>'
+                      f'<set attributeName="opacity" to=".8" begin="{t0:.3f}s"/><set attributeName="opacity" to="0" begin="{t0 + rd:.3f}s"/></rect>')
     return c
 
 
@@ -308,7 +315,7 @@ def graph(d, s):
     cell = pitch - 3
     c = Card("graph", W, 290, "Every day, in blue",
              f"Contribution graph for the last year, {plural(s['total'], 'contribution')} in the last 12 months.")
-    b = 1.3
+    b = 2.5
     c.mixed(38, 78, 44, [("Every day, ", "d", ""), ("in blue", "di", "bl")], delay=b)
     c.text(W - 40, 70, "REFRESHED DAILY", 12, "m", "mu", "end", delay=b + 0.05, spacing=2)
     nz = sorted(v for v in by.values() if v)
@@ -355,7 +362,7 @@ def activity(s):
     c = Card("activity", W, 456, "Contributions in the last 12 months",
              f"{plural(s['total'], 'contribution')} in the last 12 months. Current streak {plural(s['streak'], 'day')}, "
              f"{s['active']} of {s['days']} days active, busiest day {s['busiest']}.")
-    b = 2.9
+    b = 4.1
     c.text(40, 66, "THE LAST 12 MONTHS ON GITHUB", 13, "m", "mu", delay=b, spacing=2)
     n, word = f"{s['total']:,} ", "contribution" + ("" if s["total"] == 1 else "s")
     size = min(78, 540 / (measure(n, 1, "d") + measure(word, 1, "di")))
@@ -396,7 +403,7 @@ def tile(i, spec):
     name, kicker, roman, ital, text, href, bg, fg = spec
     c = Card(name, THIRD, 216, f"{kicker.title()}: {roman}{ital}", text, bg=bg)
     cls = "wh" if fg == "#ffffff" else ""
-    b = 3.6 + i * 0.12
+    b = 4.8 + i * 0.12
     c.text(32, 58, kicker, 12, "m", cls, delay=b, spacing=2)
     c.add(c.anim(arrow(THIRD - 32 - 18, 42, fg), "rise", b))
     size = 50
@@ -411,14 +418,14 @@ def tile(i, spec):
 def heading(theme):
     ink = PAPER if theme == "dark" else INK
     c = Card(f"title-building-{theme}", W, 100, "What I'm building", "Section heading", bg=None, ink=ink)
-    c.mixed(20, 70, 48, [("What I'm ", "d", ""), ("building", "di", "")], delay=4.2)
+    c.mixed(20, 70, 48, [("What I'm ", "d", ""), ("building", "di", "")], delay=5.4)
     return c
 
 
 def repo_card(i, r, H):
     dot = [BLUE, RED, YELLOW][i % 3]
     c = Card("repo-" + r["name"], THIRD, H, r["name"], f"{r['name']}: {r['description'] or 'repository'}")
-    b = 4.5 + i * 0.15
+    b = 5.7 + i * 0.15
     c.add(c.anim(f'<rect x="32" y="49" width="12" height="12" rx="3.5" fill="{dot}"/>', "pop", b))
     c.text(54, 61, r["name"], 17, "sb", delay=b)
     for n, line in enumerate(wrap(r["description"] or "No description yet.", 14, "s", THIRD - 64, 4)):

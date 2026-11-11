@@ -16,4 +16,4 @@ text{fill:#111111;white-space:pre}
 .grow{animation:grow .85s cubic-bezier(.2,.7,.2,1) both;transform-box:fill-box;transform-origin:50% 100%}
 .pop{animation:pop .45s cubic-bezier(.3,1.4,.5,1) both;transform-box:fill-box;transform-origin:center}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}.smil{display:none}}
-</style><g class="rise" style="animation-delay:4.20s"><text x="20.0" y="70.0" font-size="48" text-anchor="start" class="f-d">What I&#x27;m </text></g><g class="rise" style="animation-delay:4.20s"><text x="178.6" y="70.0" font-size="48" text-anchor="start" class="f-di">building</text></g></svg>
+</style><g class="rise" style="animation-delay:5.40s"><text x="20.0" y="70.0" font-size="48" text-anchor="start" class="f-d">What I&#x27;m </text></g><g class="rise" style="animation-delay:5.40s"><text x="178.6" y="70.0" font-size="48" text-anchor="start" class="f-di">building</text></g></svg>
