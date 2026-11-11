@@ -223,6 +223,7 @@ RAMP = " .`:-=+*cs#%@"  # sparse -> dense
 ROW_ASPECT = 15 / 8  # row pitch / character width of one ASCII cell
 PORTRAIT_SECS = 2.0  # how long the portrait takes to print
 PORTRAIT_SCALE = 0.78  # 1.0 fills the space beside the text; smaller is more minimal
+PORTRAIT_CENTER = (625, 220)  # centre of the open space right of the name, within the card
 PORTRAIT_TXT = os.path.join(ROOT, "assets", "portrait.txt")  # made once by scripts/make_portrait.py
 
 
@@ -285,7 +286,7 @@ def hero(d):
         c.chars["m"].update("".join(art))
         cw = PORTRAIT_SCALE * min(332 / cols, (ly - 26) / (rows * ROW_ASPECT))  # fit the space right of the text
         ch = cw * ROW_ASPECT
-        x0, y0, fs = 790 - cols * cw, ly + 2 - rows * ch, ch * 0.86  # bottom edge on the link's baseline
+        x0, y0, fs = PORTRAIT_CENTER[0] - cols * cw / 2, PORTRAIT_CENTER[1] - rows * ch / 2, ch * 0.86
         rd = PORTRAIT_SECS / rows
         for r, line in enumerate(art):
             if not line.strip():
