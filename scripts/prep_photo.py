@@ -26,6 +26,7 @@ ap.add_argument("out")
 ap.add_argument("--size", type=float, default=0.8, help="crop side as a fraction of the subject's width")
 ap.add_argument("--line", type=float, default=0.6, help="how hard thin features are pushed toward black")
 ap.add_argument("--model", default="u2netp", help="rembg model: u2netp (5 MB), silueta (43 MB), u2net_human_seg (176 MB)")
+ap.add_argument("--crop", help="x,y,side in source pixels; overrides the automatic head-and-shoulders crop")
 ap.add_argument("--clahe", type=float, default=2.0, help="local contrast clip limit (0 = off)")
 a = ap.parse_args()
 
@@ -49,11 +50,14 @@ if a.clahe:
     out = cv2.createCLAHE(clipLimit=a.clahe, tileGridSize=(8, 8)).apply(out)
 white = np.where(alpha[..., None] > 128, out[..., None], 255)[..., 0].astype(np.uint8)
 
-ys, xs = np.where(subject)
-top, left, right = ys.min(), xs.min(), xs.max()
-side = int((right - left) * a.size)
-cx = int(xs[ys < top + side].mean())  # centre on the head, not the shoulders
-x0 = max(0, min(white.shape[1] - side, cx - side // 2))
-y0 = max(0, min(white.shape[0] - side, top - side // 12))
+if a.crop:
+    x0, y0, side = (int(v) for v in a.crop.split(","))
+else:
+    ys, xs = np.where(subject)
+    top, left, right = ys.min(), xs.min(), xs.max()
+    side = int((right - left) * a.size)
+    cx = int(xs[ys < top + side].mean())  # centre on the head, not the shoulders
+    x0 = max(0, min(white.shape[1] - side, cx - side // 2))
+    y0 = max(0, min(white.shape[0] - side, top - side // 12))
 Image.fromarray(white[y0:y0 + side, x0:x0 + side]).save(a.out)
 print(f"wrote {a.out}: {side}x{side}px crop from ({x0},{y0})")
