@@ -3,3 +3,4 @@ __pycache__/
 .DS_Store
 img-src.jpeg
 img-src2.png
+img-src*
