@@ -222,6 +222,7 @@ def plural(n, w):
 RAMP = " .`:-=+*cs#%@"  # sparse -> dense
 ROW_ASPECT = 15 / 8  # row pitch / character width of one ASCII cell
 PORTRAIT_SECS = 2.0  # how long the portrait takes to print
+PORTRAIT_SCALE = 0.78  # 1.0 fills the space beside the text; smaller is more minimal
 PORTRAIT_TXT = os.path.join(ROOT, "assets", "portrait.txt")  # made once by scripts/make_portrait.py
 
 
@@ -282,7 +283,7 @@ def hero(d):
     if art:
         cols, rows = max(len(x) for x in art), len(art)
         c.chars["m"].update("".join(art))
-        cw = min(332 / cols, (ly - 26) / (rows * ROW_ASPECT))  # fit the space right of the text
+        cw = PORTRAIT_SCALE * min(332 / cols, (ly - 26) / (rows * ROW_ASPECT))  # fit the space right of the text
         ch = cw * ROW_ASPECT
         x0, y0, fs = 790 - cols * cw, ly + 2 - rows * ch, ch * 0.86  # bottom edge on the link's baseline
         rd = PORTRAIT_SECS / rows
