@@ -219,34 +219,47 @@ def plural(n, w):
 
 
 # ---- ASCII portrait -----------------------------------------------------------------
-def ascii_rows(data_uri, cols, rows):
-    """Turn the avatar into rows of characters; a bright subject on dark art becomes dense glyphs."""
-    try:
-        from PIL import Image, ImageChops, ImageOps
-    except ImportError:
-        return None
-    src = Image.open(io.BytesIO(base64.b64decode(data_uri.split(",", 1)[1]))).convert("RGB")
-    hsv = src.convert("HSV")
-    # Weight brightness by (1 - saturation): pale subjects stand out from glowing coloured backdrops.
-    img = ImageChops.multiply(hsv.getchannel("V"), hsv.getchannel("S").point(lambda v: 255 - int(0.95 * v)))
-    w, h = img.size
-    s = int(min(w, h) * 0.86)  # trim the margin so the subject fills the box
-    img = img.crop(((w - s) // 2, (h - s) // 2, (w - s) // 2 + s, (h - s) // 2 + s))
-    edge = [img.getpixel((i, j)) for i in range(0, s, 4) for j in (0, s - 1)] + \
-           [img.getpixel((j, i)) for i in range(0, s, 4) for j in (0, s - 1)]
-    mid = [img.getpixel((x, y)) for x in range(s // 3, 2 * s // 3, 3) for y in range(s // 3, 2 * s // 3, 3)]
-    dark_bg = sum(mid) / len(mid) > sum(edge) / len(edge)  # subject brighter than its surroundings
-    img = ImageOps.autocontrast(img.resize((cols, rows), Image.LANCZOS), cutoff=2)
-    ramp = " .:-=+*#%@"
+RAMP = " .:-=+*%@"
+ROW_ASPECT = 1.9  # monospace row pitch / character width that looks square
+PORTRAIT_TXT = os.path.join(ROOT, "assets", "portrait.txt")  # made once by scripts/make_portrait.py
+
+
+def to_ascii(lum, cols, rows, dense_dark, gamma=1.3, floor=0.0):
+    """Greyscale image -> rows of characters. Dense glyphs mark dark (or bright) areas."""
+    from PIL import Image, ImageOps
+    img = ImageOps.autocontrast(lum.resize((cols, rows), Image.LANCZOS), cutoff=1)
     out = []
     for y in range(rows):
         line = ""
         for x in range(cols):
             v = img.getpixel((x, y)) / 255
-            v = v if dark_bg else 1 - v
-            line += ramp[min(len(ramp) - 1, int((v ** 2.4) * len(ramp)))]
+            v = 1 - v if dense_dark else v
+            v = 0 if v < floor else v
+            line += RAMP[min(len(RAMP) - 1, int((v ** gamma) * len(RAMP)))]
         out.append(line)
     return out
+
+
+def avatar_rows(data_uri, cols, rows):
+    """Fallback: ASCII of the GitHub avatar, weighting brightness by (1 - saturation) so pale subjects
+    stand out from glowing coloured backdrops."""
+    try:
+        from PIL import ImageChops, Image
+    except ImportError:
+        return None
+    src = Image.open(io.BytesIO(base64.b64decode(data_uri.split(",", 1)[1]))).convert("RGB")
+    hsv = src.convert("HSV")
+    lum = ImageChops.multiply(hsv.getchannel("V"), hsv.getchannel("S").point(lambda v: 255 - int(0.95 * v)))
+    w, h = lum.size
+    s = int(min(w, h) * 0.86)
+    lum = lum.crop(((w - s) // 2, (h - s) // 2, (w - s) // 2 + s, (h - s) // 2 + s))
+    return to_ascii(lum, cols, rows, dense_dark=False, gamma=2.4)
+
+
+def portrait_rows(d, cols, rows):
+    if os.path.exists(PORTRAIT_TXT):  # your own photo, converted once; no image needed in CI
+        return open(PORTRAIT_TXT).read().split("\n")
+    return avatar_rows(d["portrait"], cols, rows) if d.get("portrait") else None
 
 
 # ---- cards ----------------------------------------------------------------------------
@@ -264,13 +277,14 @@ def hero(d):
     ly = ty + 25 * 3 + 40
     c.text(40, ly, SITE[0], 15, "m", delay=0.8)
     c.add(c.anim(arrow(40 + measure(SITE[0], 15, "m") + 12, ly - 14, BLUE), "rise", 0.85))
-    cols, rows = 72, 42
-    art = ascii_rows(d["portrait"], cols, rows) if d.get("portrait") else None
+    art = portrait_rows(d, 72, 38)
     if art:
+        cols, rows = max(len(x) for x in art), len(art)
         c.chars["m"].update("".join(art))
         adv = measure("M", 1, "m")
-        x0, y0, boxw, boxh = 474, 62, 316, 316
-        fs, pitch = boxw / (cols * adv), boxh / rows
+        fs = min(316 / (cols * adv), 368 / (rows * adv * ROW_ASPECT))  # fit a 316 x 368 box
+        pitch = fs * adv * ROW_ASPECT     # row pitch that keeps the picture's proportions
+        x0, y0 = 474, (440 - rows * pitch) / 2
         for r, line in enumerate(art):
             body = line.strip()
             if not body:
