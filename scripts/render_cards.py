@@ -282,9 +282,9 @@ def hero(d):
     if art:
         cols, rows = max(len(x) for x in art), len(art)
         c.chars["m"].update("".join(art))
-        cw = min(316 / cols, 372 / (rows * ROW_ASPECT))  # cell width: fit a 316 x 372 box
+        cw = min(332 / cols, (ly - 26) / (rows * ROW_ASPECT))  # fit the space right of the text
         ch = cw * ROW_ASPECT
-        x0, y0, fs = 474, (440 - rows * ch) / 2, ch * 0.86
+        x0, y0, fs = 790 - cols * cw, ly + 2 - rows * ch, ch * 0.86  # bottom edge on the link's baseline
         rd = PORTRAIT_SECS / rows
         for r, line in enumerate(art):
             if not line.strip():
