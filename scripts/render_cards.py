@@ -11,8 +11,9 @@ subset with pyftsubset and embedded as base64 WOFF2 data URIs.
 Every animation is written "from" a hidden state with fill-mode `both`, so the
 resting state of every element is the final frame. Turning animation off
 (prefers-reduced-motion, or STATIC=1) therefore just shows the finished card.
+Gutters between cards are baked into each SVG (PAD), so the README needs no spacing.
 """
-import base64, datetime as dt, hashlib, html, json, os, subprocess, sys, tempfile
+import base64, datetime as dt, hashlib, html, io, json, os, subprocess, sys, tempfile
 from collections import OrderedDict
 
 from fontTools.ttLib import TTFont
@@ -21,31 +22,40 @@ ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 STATIC = os.environ.get("STATIC") == "1"
 OUT = os.path.join(ROOT, "preview" if STATIC else "cards")
 
-# ---- identity ---------------------------------------------------------------
-# Fonts/colours follow https://yashsrivastav.vercel.app (its style.css): Fira Code,
-# --color-purple #8000ff, --color-dark-mode #11111b, --color-light-mode #ece7e1.
-BRAND = "#8000ff"        # light theme
-BRAND_DARK = "#a566ff"   # dark theme (site purple lifted for contrast on #11111b)
-ABOUT = "Senior Software Engineer at Naukri.com. CS and AI graduate from India."
-LINKS = [  # (file, kicker, title, href, icon)
-    ("tile-portfolio", "PORTFOLIO", "See my work", "https://yashsrivastav.vercel.app/", "globe"),
-    ("tile-linkedin", "LINKEDIN", "Say hello", "https://www.linkedin.com/in/yash-stv/", "in"),
-    ("tile-email", "EMAIL", "Write to me", "mailto:iyashsrivastav@gmail.com", "mail"),
+# ---- identity ---------------------------------------------------------------------
+KICKER = "SENIOR SOFTWARE ENGINEER AT NAUKRI.COM"
+ABOUT = "I build software at Naukri.com and explore machine learning, blockchain and AR/VR on the side."
+SITE = ("yashsrivastav.vercel.app", "https://yashsrivastav.vercel.app/")
+LINKEDIN = "https://www.linkedin.com/in/yash-stv/"
+EMAIL = "iyashsrivastav@gmail.com"
+# Palette: off-white cards, one ink, one blue, plus red and yellow for the tiles.
+PAPER, INK, MUTED, LINE = "#f4f4f2", "#111111", "#6f6f6a", "#e2e2dd"
+BLUE, RED, YELLOW = "#3a55f5", "#e04e3b", "#f5c94a"
+CELLS = ["#e2e2dd", "#c8cffb", "#93a2f9", "#5d74f7", "#2a40e0"]  # contribution levels 0..4
+TILES = [  # (file, kicker, roman, italic, text, href, background, text colour)
+    ("tile-portfolio", "PORTFOLIO", "See my ", "work", "Projects, experience and skills in one place.", SITE[1], BLUE, "#ffffff"),
+    ("tile-linkedin", "LINKEDIN", "Say ", "hello", "My experience, projects and professional network.", LINKEDIN, RED, "#ffffff"),
+    ("tile-email", "EMAIL", "Write to ", "me", EMAIL, "mailto:" + EMAIL, YELLOW, INK),
 ]
-W = 830  # card width in user units; <img width=100%> scales it
+W = 830          # full-width canvas
+PAD = 8          # transparent gutter baked around every card
+THIRD = 277      # canvas width of a card shown at 33.333%
 
-FONTS = {  # face -> (source file, css weight, css style). Fira Code has no italic.
-    "r": ("FiraCode-Regular.ttf", 400, "normal"),
-    "b": ("FiraCode-Bold.ttf", 700, "normal"),
-}
 FONT_DIR = os.path.join(ROOT, "assets", "fonts")
+FONTS = {  # face -> (file, family, css weight, css style)
+    "d": ("instrument-serif-latin-400-normal.woff2", "Instrument Serif", 400, "normal"),
+    "di": ("instrument-serif-latin-400-italic.woff2", "Instrument Serif", 400, "italic"),
+    "s": ("inter-latin-400-normal.woff2", "Inter", 400, "normal"),
+    "sb": ("inter-latin-600-normal.woff2", "Inter", 600, "normal"),
+    "m": ("ibm-plex-mono-latin-400-normal.woff2", "IBM Plex Mono", 400, "normal"),
+}
 _ttf = {k: TTFont(os.path.join(FONT_DIR, v[0])) for k, v in FONTS.items()}
 
 
-def measure(s, size, face="r"):
+def measure(s, size, face="s", spacing=0):
     f = _ttf[face]
     cmap, hmtx, upm = f.getBestCmap(), f["hmtx"], f["head"].unitsPerEm
-    return sum(hmtx[cmap.get(ord(c), ".notdef")][0] for c in s) * size / upm
+    return sum(hmtx[cmap.get(ord(c), ".notdef")][0] for c in s) * size / upm + spacing * len(s)
 
 
 def wrap(s, size, face, width, max_lines):
@@ -73,72 +83,74 @@ def subset_font(face, chars):
     with tempfile.TemporaryDirectory() as td:
         out = os.path.join(td, "s.woff2")
         subprocess.run([sys.executable, "-m", "fontTools.subset", src, f"--text={''.join(sorted(chars))}",
-                        "--flavor=woff2", "--layout-features=kern", "--no-hinting",
-                        "--desubroutinize", f"--output-file={out}"], check=True)
+                        "--flavor=woff2", "--layout-features=kern,liga", "--no-hinting",
+                        f"--output-file={out}"], check=True)
         return "data:font/woff2;base64," + base64.b64encode(open(out, "rb").read()).decode()
 
 
 CSS_BASE = f"""
-svg{{--paper:#ece7e1;--ink:#11111b;--muted:#5f5a66;--line:#d3ccc2;--brand:{BRAND};--cell:#11111b14}}
-@media (prefers-color-scheme:dark){{svg{{--paper:#11111b;--ink:#ece7e1;--muted:#9c9aab;--line:#27273a;--brand:{BRAND_DARK};--cell:#ece7e112}}}}
-.card{{fill:var(--paper);stroke:var(--line)}}
-text{{fill:var(--ink);font-family:'Fira Code',ui-monospace,Menlo,Consolas,monospace}}
-.m{{fill:var(--muted)}} .br{{fill:var(--brand)}}
-.st{{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}}
+text{{fill:{INK};white-space:pre}}
+.f-d{{font-family:'Instrument Serif',Georgia,serif}}
+.f-di{{font-family:'Instrument Serif',Georgia,serif;font-style:italic}}
+.f-s{{font-family:Inter,system-ui,sans-serif}} .f-sb{{font-family:Inter,system-ui,sans-serif;font-weight:600}}
+.f-m{{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}}
+.mu{{fill:{MUTED}}} .bl{{fill:{BLUE}}} .wh{{fill:#fff}}
+.st{{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}}
 """
 CSS_ANIM = """
-@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}}
 @keyframes grow{from{transform:scaleY(0)}}
-@keyframes pop{from{opacity:0;transform:scale(.2)}}
-@keyframes draw{from{stroke-dashoffset:1}}
+@keyframes pop{from{opacity:0;transform:scale(.3)}}
 @keyframes fade{from{opacity:0}}
-.rise{animation:rise .7s cubic-bezier(.2,.7,.2,1) both}
-.fade{animation:fade .8s ease-out both}
-.grow{animation:grow .8s cubic-bezier(.2,.7,.2,1) both;transform-box:fill-box;transform-origin:50% 100%}
+.rise{animation:rise .75s cubic-bezier(.2,.7,.2,1) both}
+.fade{animation:fade .6s ease-out both}
+.grow{animation:grow .85s cubic-bezier(.2,.7,.2,1) both;transform-box:fill-box;transform-origin:50% 100%}
 .pop{animation:pop .45s cubic-bezier(.3,1.4,.5,1) both;transform-box:fill-box;transform-origin:center}
-.draw{stroke-dasharray:1;animation:draw .9s ease-out both}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}.smil{display:none}}
 """
 
 
 class Card:
-    def __init__(self, name, w, h, title, desc):
-        self.name, self.w, self.h, self.title, self.desc = name, w, h, title, desc
+    """A canvas of w x h with a card inset by PAD (bg=None for a bare heading)."""
+
+    def __init__(self, name, w, h, title, desc, bg=PAPER, ink=INK):
+        self.name, self.w, self.h, self.title, self.desc, self.bg, self.ink = name, w, h, title, desc, bg, ink
         self.parts, self.chars = [], {k: set() for k in FONTS}
 
     def add(self, s):
         self.parts.append(s)
 
-    def a(self, cls, delay):  # animation class + delay attributes (no-ops in STATIC)
-        return "" if STATIC else f' class="{cls}" style="animation-delay:{delay:.2f}s"'
+    def anim(self, inner, cls, delay):
+        return inner if STATIC else f'<g class="{cls}" style="animation-delay:{delay:.2f}s">{inner}</g>'
 
-    def text(self, x, y, s, size, face="r", cls="", anchor="start", delay=None, spacing=0):
+    def text(self, x, y, s, size, face="s", cls="", anchor="start", delay=None, spacing=0):
         if not s:
             return
-        face = "r" if face == "i" else face  # no italic in Fira Code; "m" colour carries the emphasis
         self.chars[face].update(s)
-        fam = {"r": "", "b": ' font-weight="700"'}[face]
-        c = f' class="{cls}"' if cls else ""
+        c = " ".join(filter(None, [f"f-{face}", cls]))
         ls = f' letter-spacing="{spacing}"' if spacing else ""
-        t = (f'<text x="{x}" y="{y}" font-size="{size}"{fam}{ls} text-anchor="{anchor}"{c}>'
-             f'{html.escape(s)}</text>')
-        self.add(self.wrapg(t, "rise", delay) if delay is not None else t)
+        t = f'<text x="{x:.1f}" y="{y:.1f}" font-size="{size}"{ls} text-anchor="{anchor}" class="{c}">{html.escape(s)}</text>'
+        self.add(self.anim(t, "rise", delay) if delay is not None else t)
 
-    def wrapg(self, inner, cls, delay):
-        return f'<g{self.a(cls, delay)}>{inner}</g>' if not STATIC else inner
+    def mixed(self, x, y, size, parts, delay=None):
+        """Consecutive runs [(text, face, cls)] on one baseline; returns the end x."""
+        for s, face, cls in parts:
+            self.text(x, y, s, size, face, cls, delay=delay)
+            x += measure(s, size, face)
+        return x
 
     def svg(self):
         faces = "".join(
-            f'@font-face{{font-family:"Fira Code";font-weight:{FONTS[k][1]};font-style:{FONTS[k][2]};'
+            f'@font-face{{font-family:"{FONTS[k][1]}";font-weight:{FONTS[k][2]};font-style:{FONTS[k][3]};'
             f'src:url({subset_font(k, chars | {" "})}) format("woff2")}}'
             for k, chars in self.chars.items() if chars)
-        css = faces + CSS_BASE + ("" if STATIC else CSS_ANIM)
+        css = faces + CSS_BASE.replace(f"fill:{INK};white", f"fill:{self.ink};white") + ("" if STATIC else CSS_ANIM)
+        rect = (f'<rect x="{PAD}" y="{PAD}" width="{self.w - 2*PAD}" height="{self.h - 2*PAD}" rx="28" '
+                f'fill="{self.bg}" stroke="{LINE}"/>') if self.bg else ""
         return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{self.w}" height="{self.h}" '
-                f'viewBox="0 0 {self.w} {self.h}" role="img" aria-labelledby="t d">'
+                f'viewBox="0 0 {self.w} {self.h}" xml:space="preserve" role="img" aria-labelledby="t d">'
                 f'<title id="t">{html.escape(self.title)}</title><desc id="d">{html.escape(self.desc)}</desc>'
-                f'<style>{css}</style>'
-                f'<rect class="card" x=".5" y=".5" width="{self.w-1}" height="{self.h-1}" rx="16"/>'
-                + "".join(self.parts) + "</svg>")
+                f'<style>{css}</style>{rect}' + "".join(self.parts) + "</svg>")
 
     def save(self):
         os.makedirs(OUT, exist_ok=True)
@@ -148,16 +160,20 @@ class Card:
         return len(data)
 
 
-def pulse(cx, cy, r0, r1, begin=1.2, extra=""):
+def pulse(cx, cy, r0, r1, begin):
     """Decorative SMIL ring. Hidden under prefers-reduced-motion; omitted in STATIC."""
     if STATIC:
         return ""
-    return (f'<circle class="smil" cx="{cx}" cy="{cy}" r="{r0}" fill="none" stroke="var(--brand)" stroke-width="2" opacity="0" {extra}>'
+    return (f'<circle class="smil" cx="{cx:.1f}" cy="{cy:.1f}" r="{r0}" fill="none" stroke="{BLUE}" stroke-width="2" opacity="0">'
             f'<animate attributeName="r" values="{r0};{r1}" dur="2.8s" repeatCount="indefinite" begin="{begin}s"/>'
-            f'<animate attributeName="opacity" values="0.55;0" dur="2.8s" repeatCount="indefinite" begin="{begin}s"/></circle>')
+            f'<animate attributeName="opacity" values="0.6;0" dur="2.8s" repeatCount="indefinite" begin="{begin}s"/></circle>')
 
 
-# ---- data -----------------------------------------------------------------------
+def arrow(x, y, color):
+    return f'<g transform="translate({x:.1f} {y:.1f})" style="color:{color}"><path class="st" d="M4 14L14 4M6 4h8v8"/></g>'
+
+
+# ---- data -------------------------------------------------------------------------
 def load():
     with open(os.path.join(ROOT, "data", "github.json")) as f:
         d = json.load(f)
@@ -165,6 +181,16 @@ def load():
         x["d"] = dt.date.fromisoformat(x["date"])
     d["calendar"].sort(key=lambda x: x["d"])
     return d
+
+
+def month_window(last):
+    y, m, out = last.year, last.month, []
+    for _ in range(12):
+        out.append((y, m))
+        m -= 1
+        if m == 0:
+            y, m = y - 1, 12
+    return out[::-1]
 
 
 def stats(cal):
@@ -179,157 +205,80 @@ def stats(cal):
     while i >= 0 and cal[i]["count"]:
         streak += 1
         i -= 1
-    busiest = max(cal, key=lambda x: x["count"])
-    return dict(streak=streak, longest=best, active=sum(1 for x in cal if x["count"]),
-                total=sum(x["count"] for x in cal), busiest=busiest)
-
-
-def fmt_day(d):
-    return f"{d.strftime('%a')} {d.day} {d.strftime('%b %Y')}"
+    months = month_window(cal[-1]["d"])
+    win = [x for x in cal if x["d"] >= dt.date(*months[0], 1)]
+    tot = OrderedDict((k, 0) for k in months)
+    for x in win:
+        tot[(x["d"].year, x["d"].month)] += x["count"]
+    return dict(streak=streak, longest=best, months=tot, total=sum(tot.values()), days=len(win),
+                active=sum(1 for x in win if x["count"]), busiest=max(x["count"] for x in win))
 
 
 def plural(n, w):
-    return f"{n} {w}" + ("" if n == 1 else "s")
+    return f"{n:,} {w}" + ("" if n == 1 else "s")
 
 
-# ---- cards ------------------------------------------------------------------------
+# ---- ASCII portrait -----------------------------------------------------------------
+def ascii_rows(data_uri, cols, rows):
+    """Turn the avatar into rows of characters; a bright subject on dark art becomes dense glyphs."""
+    try:
+        from PIL import Image, ImageChops, ImageOps
+    except ImportError:
+        return None
+    src = Image.open(io.BytesIO(base64.b64decode(data_uri.split(",", 1)[1]))).convert("RGB")
+    hsv = src.convert("HSV")
+    # Weight brightness by (1 - saturation): pale subjects stand out from glowing coloured backdrops.
+    img = ImageChops.multiply(hsv.getchannel("V"), hsv.getchannel("S").point(lambda v: 255 - int(0.95 * v)))
+    w, h = img.size
+    s = int(min(w, h) * 0.86)  # trim the margin so the subject fills the box
+    img = img.crop(((w - s) // 2, (h - s) // 2, (w - s) // 2 + s, (h - s) // 2 + s))
+    edge = [img.getpixel((i, j)) for i in range(0, s, 4) for j in (0, s - 1)] + \
+           [img.getpixel((j, i)) for i in range(0, s, 4) for j in (0, s - 1)]
+    mid = [img.getpixel((x, y)) for x in range(s // 3, 2 * s // 3, 3) for y in range(s // 3, 2 * s // 3, 3)]
+    dark_bg = sum(mid) / len(mid) > sum(edge) / len(edge)  # subject brighter than its surroundings
+    img = ImageOps.autocontrast(img.resize((cols, rows), Image.LANCZOS), cutoff=2)
+    ramp = " .:-=+*#%@"
+    out = []
+    for y in range(rows):
+        line = ""
+        for x in range(cols):
+            v = img.getpixel((x, y)) / 255
+            v = v if dark_bg else 1 - v
+            line += ramp[min(len(ramp) - 1, int((v ** 2.4) * len(ramp)))]
+        out.append(line)
+    return out
+
+
+# ---- cards ----------------------------------------------------------------------------
 def hero(d):
-    c = Card("hero", W, 240, d["name"], f"{d['name']}. {ABOUT}")
-    has_p = bool(d.get("portrait"))
-    c.text(48, 68, "Namaste();", 20, "r", "m", delay=0.0)
-    c.text(46, 128, d["name"], 54, "b", delay=0.15)
-    c.add(f'<path{c.a("draw", 0.55)} d="M48 148H{48 + min(measure(d["name"], 54, "b"), 380) * 0.6:.0f}" pathLength="1" '
-          f'stroke="var(--brand)" stroke-width="4" stroke-linecap="round" fill="none"/>')
-    for n, line in enumerate(wrap(ABOUT, 18, "r", 540 if has_p else 700, 2)):
-        c.text(48, 188 + n * 28, line, 18, "r", "m", delay=0.35 + n * 0.1)
-    if has_p:
-        cx, cy, r = 706, 120, 76
-        c.add(f'<defs><clipPath id="p"><circle cx="{cx}" cy="{cy}" r="{r}"/></clipPath></defs>')
-        c.add(c.wrapg(f'<image href="{d["portrait"]}" x="{cx-r}" y="{cy-r}" width="{2*r}" height="{2*r}" '
-                      f'clip-path="url(#p)" preserveAspectRatio="xMidYMid slice"/>'
-                      f'<circle cx="{cx}" cy="{cy}" r="{r+5}" fill="none" stroke="var(--brand)" stroke-width="2.5"/>'
-                      + pulse(cx, cy, r + 5, r + 20), "fade", 0.25))
-    return c
-
-
-ICONS = {
-    "doc": '<path class="st" d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6"/>',
-    "in": '<rect class="st" x="3" y="3" width="18" height="18" rx="4"/>',
-    "globe": '<circle class="st" cx="12" cy="12" r="9"/><path class="st" d="M3 12h18M12 3c3.5 3 3.5 15 0 18M12 3c-3.5 3-3.5 15 0 18"/>',
-    "mail": '<rect class="st" x="3" y="5" width="18" height="14" rx="2"/><path class="st" d="M3 7l9 6 9-6"/>',
-}
-
-
-def tile(i, spec):
-    name, kicker, title, href, icon = spec
-    c = Card(name, 270, 104, f"{title} ({kicker.title()})", f"Link: {title}")
-    base = 0.45 + i * 0.12
-    g = f'<g transform="translate(28 30) scale(1.5)">{ICONS[icon]}</g>'
-    c.add(c.wrapg(g, "rise", base))
-    if icon == "in":
-        c.text(46, 55, "in", 17, "b", anchor="middle", delay=base)  # sits in the rounded square
-    c.text(86, 44, kicker, 12, "b", "m", delay=base + 0.05, spacing=1.5)
-    c.text(86, 74, title, 19, "b", delay=base + 0.1)
-    arrow = '<path class="st" d="M232 52h16M242 45l7 7-7 7" stroke="var(--brand)"/>'
-    c.add(c.wrapg(arrow, "rise", base + 0.2))
-    return c
-
-
-def activity(d, s):
-    cal = d["calendar"]
-    last = cal[-1]["d"]
-    months = []  # last 12 calendar months ending with the latest data point
-    y, m = last.year, last.month
-    for _ in range(12):
-        months.append((y, m))
-        m -= 1
-        if m == 0:
-            y, m = y - 1, 12
-    months.reverse()
-    tot = OrderedDict((k, 0) for k in months)
-    for x in cal:
-        k = (x["d"].year, x["d"].month)
-        if k in tot:
-            tot[k] += x["count"]
-    total = sum(tot.values())
-    c = Card("activity", W, 310, "Contributions per month",
-             f"{total} contributions in the last 12 months; current streak {plural(s['streak'], 'day')}, "
-             f"{s['active']} active days, busiest day {s['busiest']['count']} on {fmt_day(s['busiest']['d'])}.")
-    c.text(40, 52, "Contributions per month", 22, "b", delay=0.8)
-    c.text(40, 78, f"{plural(total, 'contribution')} over the last 12 months", 15, "i", "m", delay=0.85)
-    x0, x1, base_y, top = 40, 560, 258, 116
-    mx = max(max(tot.values()), 1)
-    slot = (x1 - x0) / 12
-    c.add(f'<path d="M{x0} {base_y + .5}H{x1}" stroke="var(--line)" stroke-width="1.5"/>')
-    for i, ((yy, mm), v) in enumerate(tot.items()):
-        bx, bw = x0 + i * slot + (slot - 26) / 2, 26
-        hgt = max(v / mx * (base_y - top), 3)
-        dl = 0.95 + i * 0.06
-        col = "br" if v else "m"
-        op = "" if v else ' opacity=".35"'
-        bar = f'<rect class="{col}" x="{bx:.1f}" y="{base_y - hgt:.1f}" width="{bw}" height="{hgt:.1f}" rx="3"{op}/>'
-        c.add(f'<g{c.a("grow", dl)}>{bar}</g>' if not STATIC else bar)
-        if v:
-            c.text(f"{bx + bw / 2:.1f}", f"{base_y - hgt - 8:.1f}", str(v), 14, "b", anchor="middle", delay=dl + 0.3)
-        c.text(f"{bx + bw / 2:.1f}", base_y + 24, dt.date(yy, mm, 1).strftime("%b"), 13, "r", "m", "middle", delay=dl)
-    # stat column
-    sx = 612
-    c.add(f'<path d="M{sx - 26} 40V{base_y + 14}" stroke="var(--line)" stroke-width="1.5"/>')
-    b = s["busiest"]
-    items = [
-        ("CURRENT STREAK", plural(s["streak"], "day"), f"longest {plural(s['longest'], 'day')}"),
-        ("ACTIVE DAYS", str(s["active"]), "days contributed"),
-        ("BUSIEST DAY", str(b["count"]) if b["count"] else "none", fmt_day(b["d"]) if b["count"] else "yet"),
-    ]
-    for i, (lab, val, sub) in enumerate(items):
-        y0 = 62 + i * 78
-        dl = 1.1 + i * 0.15
-        c.text(sx, y0, lab, 12, "b", "m", delay=dl, spacing=1.5)
-        c.text(sx, y0 + 34, val, 34, "b", "br" if i == 0 else "", delay=dl + 0.05)
-        c.text(sx, y0 + 55, sub, 13, "i", "m", delay=dl + 0.1)
-    if s["streak"]:
-        tx = sx + measure(items[0][1], 34, "b") + 14
-        c.add(f'<circle cx="{tx:.0f}" cy="{62 + 34 - 11}" r="5" fill="var(--brand)"/>'
-              + pulse(f"{tx:.0f}", 62 + 34 - 11, 5, 14))
-    return c
-
-
-def lang_dot(c, x, y, lang, delay):
-    c.add(c.wrapg(f'<circle cx="{x}" cy="{y - 5}" r="6" fill="var(--brand)"/>', "pop", delay))
-    c.text(x + 16, y, lang, 15, "r", "m", delay=delay)
-
-
-def repo_card(i, r):
-    desc = r["description"] or "No description yet. The code is the documentation."
-    lines = wrap(desc, 15, "r", W - 80, 3)
-    foot_y = 90 + len(lines) * 23 + 22
-    c = Card("repo-" + r["name"], W, foot_y + 30, r["name"], f"{r['name']}: {r['description'] or 'repository'}")
-    base = 1.45 + i * 0.28
-    bar = f'<rect class="br" x="0" y="24" width="6" height="{foot_y - 50}" rx="3"/>'
-    c.add(f'<g{c.a("grow", base)}>{bar}</g>' if not STATIC else bar)
-    book = '<path class="st" d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2zM5 18a2 2 0 0 1 2-2h12"/>'
-    c.add(c.wrapg(f'<g transform="translate(36 28) scale(1.15)">{book}</g>', "rise", base))
-    c.text(72, 50, r["name"], 22, "b", "br", delay=base)
-    star = '<path class="st" d="M12 2.5l2.9 6.2 6.6.8-4.9 4.6 1.3 6.6-5.9-3.3-5.9 3.3 1.3-6.6L2.5 9.5l6.6-.8z"/>'
-    fork = ('<circle class="st" cx="6" cy="5" r="2.2"/><circle class="st" cx="18" cy="5" r="2.2"/>'
-            '<circle class="st" cx="12" cy="19" r="2.2"/><path class="st" d="M6 7.2v1.8a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7.2M12 12v4.8"/>')
-    sx = W - 40
-    for glyph, n in ((fork, r["forks"]), (star, r["stars"])):
-        s = str(n)
-        sx -= measure(s, 16, "b")
-        c.text(f"{sx:.0f}", 49, s, 16, "b", delay=base + 0.1)
-        sx -= 28
-        c.add(c.wrapg(f'<g transform="translate({sx:.0f} 31) scale(.95)">{glyph}</g>', "rise", base + 0.1))
-        sx -= 22
-    for n, line in enumerate(lines):
-        c.text(36, 90 + n * 23, line, 15, "r", "m" if not r["description"] else "", delay=base + 0.15 + n * 0.08)
-    if r["language"]:
-        lang_dot(c, 42, foot_y, r["language"], base + 0.3)
-        px = 42 + 16 + measure(r["language"], 15) + 28
-    else:
-        px = 36
-    pushed = dt.date.fromisoformat(r["pushed"])
-    c.text(f"{px:.0f}", foot_y, f"Updated {pushed.strftime('%b %Y')}", 15, "i", "m", delay=base + 0.35)
+    c = Card("hero", W, 440, d["name"], f"{d['name']}. {KICKER.title()}. {ABOUT}")
+    c.add(c.anim(f'<rect x="40" y="48" width="14" height="14" rx="4" fill="{CELLS[1]}"/>', "fade", 0))
+    c.text(68, 61, KICKER, 13, "m", "mu", delay=0.05, spacing=2)
+    first, last = (d["name"].split(" ", 1) + [""])[:2]
+    size = min(104, 380 / measure(last, 1, "di")) if last else 104
+    c.text(38, 168, first, size, "d", delay=0.15)
+    c.text(38, 168 + size * 0.88, last, size, "di", delay=0.3)
+    ty = 168 + size * 0.88 + 46
+    for n, line in enumerate(wrap(ABOUT, 17, "s", 370, 4)):
+        c.text(40, ty + n * 25, line, 17, "s", "mu", delay=0.5 + n * 0.08)
+    ly = ty + 25 * 3 + 40
+    c.text(40, ly, SITE[0], 15, "m", delay=0.8)
+    c.add(c.anim(arrow(40 + measure(SITE[0], 15, "m") + 12, ly - 14, BLUE), "rise", 0.85))
+    cols, rows = 72, 42
+    art = ascii_rows(d["portrait"], cols, rows) if d.get("portrait") else None
+    if art:
+        c.chars["m"].update("".join(art))
+        adv = measure("M", 1, "m")
+        x0, y0, boxw, boxh = 474, 62, 316, 316
+        fs, pitch = boxw / (cols * adv), boxh / rows
+        for r, line in enumerate(art):
+            body = line.strip()
+            if not body:
+                continue
+            lead = len(line) - len(line.lstrip())
+            t = (f'<text x="{x0 + lead * fs * adv:.1f}" y="{y0 + (r + 1) * pitch:.1f}" font-size="{fs:.2f}" '
+                 f'class="f-m" opacity=".85">{html.escape(body)}</text>')
+            c.add(c.anim(t, "fade", 0.25 + r * 0.03))
     return c
 
 
@@ -339,82 +288,153 @@ def graph(d, s):
     start = last - dt.timedelta(days=364)
     start -= dt.timedelta(days=(start.weekday() + 1) % 7)  # back to Sunday
     by = {x["d"]: x["count"] for x in cal}
-    cell, gap, gx, gy = 11, 3, 58, 98
-    ncols = ((last - start).days // 7) + 1
-    c = Card("graph", W, 250, "Contribution graph",
-             f"Contribution graph for the last year: {s['total']} contributions on {s['active']} active days.")
-    c.text(40, 50, "Contribution graph", 22, "b", delay=2.1)
-    c.text(W - 40, 50, f"{plural(s['total'], 'contribution')} in the last year", 15, "i", "m", "end", delay=2.15)
-    nonzero = sorted(v for v in by.values() if v)
+    ncols = (last - start).days // 7 + 1
+    gx, gy = 40, 112
+    pitch = (W - 80) / ncols
+    cell = pitch - 3
+    c = Card("graph", W, 290, "Every day, in blue",
+             f"Contribution graph for the last year, {plural(s['total'], 'contribution')} in the last 12 months.")
+    b = 1.3
+    c.mixed(38, 78, 44, [("Every day, ", "d", ""), ("in blue", "di", "bl")], delay=b)
+    c.text(W - 40, 70, "REFRESHED DAILY", 12, "m", "mu", "end", delay=b + 0.05, spacing=2)
+    nz = sorted(v for v in by.values() if v)
+
     def level(v):
         if not v:
             return 0
-        q = [nonzero[int(len(nonzero) * p)] for p in (0.25, 0.5, 0.75)] if nonzero else [1, 1, 1]
-        return 1 + sum(v > t for t in q) if len(nonzero) > 3 else min(4, 1 + v // 3)
-    ops = {1: .32, 2: .55, 3: .78, 4: 1}
-    for dow, lab in ((1, "Mon"), (3, "Wed"), (5, "Fri")):
-        c.text(gx - 12, gy + dow * (cell + gap) + cell - 2, lab, 12, "r", "m", "end", delay=2.2)
+        if len(nz) < 4:
+            return min(4, 1 + v // 3)
+        q = [nz[int(len(nz) * p)] for p in (0.25, 0.5, 0.75)]
+        return 1 + sum(v > t for t in q)
+
+    label_y = gy + 7 * pitch + 22
     lastm = None
     for col in range(ncols):
         wk = start + dt.timedelta(days=7 * col)
-        if wk.month != lastm and (col == 0 or wk.day <= 7) and col < ncols - 1:
-            c.text(gx + col * (cell + gap), gy - 12, wk.strftime("%b"), 12, "r", "m", delay=2.2 + col * 0.02)
-            lastm = wk.month
         rects = []
         for row in range(7):
             day = wk + dt.timedelta(days=row)
-            if day > last or day < last - dt.timedelta(days=370):
+            if day > last:
                 continue
-            lv = level(by.get(day, 0))
-            fill = f'fill="var(--brand)" opacity="{ops[lv]}"' if lv else 'fill="var(--cell)"'
-            rects.append(f'<rect x="{gx + col * (cell + gap)}" y="{gy + row * (cell + gap)}" width="{cell}" '
-                         f'height="{cell}" rx="3" {fill}/>')
-        c.add(c.wrapg("".join(rects), "pop", 2.25 + col * 0.03))
-    # today marker (decorative pulse)
+            rects.append(f'<rect x="{gx + col * pitch:.1f}" y="{gy + row * pitch:.1f}" width="{cell:.1f}" '
+                         f'height="{cell:.1f}" rx="3.5" fill="{CELLS[level(by.get(day, 0))]}"/>')
+        c.add(c.anim("".join(rects), "pop", b + 0.2 + col * 0.025))
+        first = next((wk + dt.timedelta(days=i) for i in range(7) if (wk + dt.timedelta(days=i)).day == 1), None)
+        if first and 0 < col < ncols - 3 and first.month != lastm:
+            c.text(gx + col * pitch, label_y, first.strftime("%b"), 13, "m", "mu", delay=b + 0.3 + col * 0.02)
+            lastm = first.month
     tcol, trow = (last - start).days // 7, (last - start).days % 7
-    if not STATIC:
-        tx, ty = gx + tcol * (cell + gap) + cell / 2, gy + trow * (cell + gap) + cell / 2
-        c.add(pulse(tx, ty, 6, 15, begin=4.0))
-    # legend
-    lx, ly = W - 40 - 5 * 17 - 40 - 36, 228
-    c.text(lx - 8, ly + 1, "Less", 13, "r", "m", "end", delay=3.7)
+    c.add(pulse(gx + tcol * pitch + cell / 2, gy + trow * pitch + cell / 2, 6, 16, begin=b + 2.2))
+    ly = label_y + 30  # legend: less [5 swatches] more
+    x = W - 40 - measure("more", 13, "m") - 8 - 5 * 18 - 4 - measure("less", 13, "m") - 8
+    c.text(x, ly, "less", 13, "m", "mu", delay=b + 1.8)
+    x += measure("less", 13, "m") + 10
     for k in range(5):
-        r = (f'<rect x="{lx + k * 17}" y="{ly - 11}" width="{cell}" height="{cell}" rx="3" '
-             + (f'fill="var(--brand)" opacity="{ops[k]}"/>' if k else 'fill="var(--cell)"/>'))
-        c.add(c.wrapg(r, "pop", 3.7 + k * 0.05))
-    c.text(lx + 5 * 17 + 4, ly + 1, "More", 13, "r", "m", delay=3.7)
-    c.text(40, ly + 1, f"Updated {d['generated']}", 13, "i", "m", delay=3.7)
+        c.add(c.anim(f'<rect x="{x + k * 18:.1f}" y="{ly - 11}" width="14" height="14" rx="4" fill="{CELLS[k]}"/>',
+                     "pop", b + 1.8 + k * 0.05))
+    c.text(x + 5 * 18 + 4, ly, "more", 13, "m", "mu", delay=b + 1.8)
     return c
 
 
-# ---- README / preview ---------------------------------------------------------------
-def page(d, cards, ver, src):
-    """Markdown/HTML body shared by README.md (src=cards/…?v=) and preview/index.html."""
+def activity(s):
+    months = s["months"]
+    c = Card("activity", W, 456, "Contributions in the last 12 months",
+             f"{plural(s['total'], 'contribution')} in the last 12 months. Current streak {plural(s['streak'], 'day')}, "
+             f"{s['active']} of {s['days']} days active, busiest day {s['busiest']}.")
+    b = 2.9
+    c.text(40, 66, "THE LAST 12 MONTHS ON GITHUB", 13, "m", "mu", delay=b, spacing=2)
+    n, word = f"{s['total']:,} ", "contribution" + ("" if s["total"] == 1 else "s")
+    size = min(78, 540 / (measure(n, 1, "d") + measure(word, 1, "di")))
+    c.mixed(38, 90 + size * 0.78, size, [(n, "d", ""), (word, "di", "")], delay=b + 0.1)
+    x0, x1, base_y, top = 40, 566, 392, 176
+    mx = max(max(months.values()), 1)
+    slot = (x1 - x0) / 12
+    for i, ((yy, mm), v) in enumerate(months.items()):
+        bw, bx = slot - 9, x0 + i * slot + 4.5
+        hgt = max(v / mx * (base_y - top), 10 if not v else 8)
+        fill = BLUE if v == mx and v else (INK if v else "#cfcfc9")
+        dl = b + 0.35 + i * 0.06
+        bar = f'<rect x="{bx:.1f}" y="{base_y - hgt:.1f}" width="{bw:.1f}" height="{hgt:.1f}" rx="5" fill="{fill}"/>'
+        c.add(bar if STATIC else f'<g class="grow" style="animation-delay:{dl:.2f}s">{bar}</g>')
+        if v == mx and v:
+            c.text(bx + bw / 2, base_y - hgt - 10, f"{v:,}", 14, "m", "bl", "middle", delay=dl + 0.3)
+        c.text(bx + bw / 2, base_y + 28, dt.date(yy, mm, 1).strftime("%b"), 13, "m", "mu", "middle", delay=dl)
+    sx = 628
+    day_word = "day" if s["streak"] == 1 else "days"
+    blocks = [
+        ([(f"{s['streak']} ", "d", ""), (day_word, "di", "")], f"current streak, longest {s['longest']}"),
+        ([(f"{s['active']}", "d", ""), (f" / {s['days']}", "d", "mu")], "days with a contribution"),
+        ([(f"{s['busiest']}", "d", "")], "on the busiest day"),
+    ]
+    for i, (parts, sub) in enumerate(blocks):
+        y, dl = 128 + i * 124, b + 0.4 + i * 0.18
+        c.mixed(sx, y, 56, parts, delay=dl)
+        c.text(sx, y + 28, sub, 14, "s", "mu", delay=dl + 0.1)
+        if i < 2:
+            c.add(f'<path d="M{sx} {y + 52}H{W - 40}" stroke="{LINE}" stroke-width="1.5"/>')
+    if s["streak"]:
+        tx = sx + measure(f"{s['streak']} {day_word}", 56, "d") + 18
+        c.add(f'<circle cx="{tx:.0f}" cy="104" r="5" fill="{BLUE}"/>' + pulse(tx, 104, 5, 15, b + 1.4))
+    return c
+
+
+def tile(i, spec):
+    name, kicker, roman, ital, text, href, bg, fg = spec
+    c = Card(name, THIRD, 216, f"{kicker.title()}: {roman}{ital}", text, bg=bg)
+    cls = "wh" if fg == "#ffffff" else ""
+    b = 3.6 + i * 0.12
+    c.text(32, 58, kicker, 12, "m", cls, delay=b, spacing=2)
+    c.add(c.anim(arrow(THIRD - 32 - 18, 42, fg), "rise", b))
+    size = 50
+    while size > 20 and measure(roman, size, "d") + measure(ital, size, "di") > THIRD - 64:
+        size -= 1
+    c.mixed(30, 128, size, [(roman, "d", cls), (ital, "di", cls)], delay=b + 0.1)
+    for n, line in enumerate(wrap(text, 14, "s", THIRD - 64, 3)):
+        c.text(32, 164 + n * 20, line, 14, "s", cls, delay=b + 0.2 + n * 0.06)
+    return c
+
+
+def heading(theme):
+    ink = PAPER if theme == "dark" else INK
+    c = Card(f"title-building-{theme}", W, 100, "What I'm building", "Section heading", bg=None, ink=ink)
+    c.mixed(20, 70, 48, [("What I'm ", "d", ""), ("building", "di", "")], delay=4.2)
+    return c
+
+
+def repo_card(i, r, H):
+    dot = [BLUE, RED, YELLOW][i % 3]
+    c = Card("repo-" + r["name"], THIRD, H, r["name"], f"{r['name']}: {r['description'] or 'repository'}")
+    b = 4.5 + i * 0.15
+    c.add(c.anim(f'<rect x="32" y="49" width="12" height="12" rx="3.5" fill="{dot}"/>', "pop", b))
+    c.text(54, 61, r["name"], 17, "sb", delay=b)
+    for n, line in enumerate(wrap(r["description"] or "No description yet.", 14, "s", THIRD - 64, 4)):
+        c.text(32, 98 + n * 21, line, 14, "s", "" if r["description"] else "mu", delay=b + 0.1 + n * 0.06)
+    tail = plural(r["stars"], "star") if r["stars"] else dt.date.fromisoformat(r["pushed"]).strftime("%b %Y")
+    c.text(32, H - 36, " · ".join(x for x in [r["language"], tail] if x), 12, "m", "mu", delay=b + 0.3)
+    return c
+
+
+# ---- README / preview -----------------------------------------------------------------
+def page(d, ver, src):
     u = lambda n: f'{src}{n}.svg' + (f'?v={ver}' if ver else '')
-    tiles = "\n".join(
-        f'  <a href="{href}"><img src="{u(name)}" width="32.5%" alt="{kick.title()}: {title}"></a>'
-        for name, kick, title, href, _ in LINKS)
-    repos = "\n".join(
-        f'<a href="{r["url"]}"><img src="{u("repo-" + r["name"])}" width="100%" alt="Repository {r["name"]}"></a>'
-        for r in d["repos"])
-    return f"""<p align="center">
-<img src="{u('hero')}" width="100%" alt="{d['name']}. {ABOUT}">
-</p>
-
-<p align="center">
-{tiles}
-</p>
-
-<p align="center">
-<img src="{u('activity')}" width="100%" alt="Contributions per month, with streak, active days and busiest day">
-</p>
-
-<p align="center">
+    tiles = "".join(f'<a href="{t[5]}"><img src="{u(t[0])}" width="33.333%" alt="{t[1].title()}: {t[2]}{t[3]}" /></a>'
+                    for t in TILES)
+    repos = "".join(f'<a href="{r["url"]}"><img src="{u("repo-" + r["name"])}" width="33.333%" alt="{r["name"]}" /></a>'
+                    for r in d["repos"])
+    return f"""<!-- Every card is an animated SVG drawn by scripts/render_cards.py and refreshed daily by
+     .github/workflows/refresh-cards.yml. Spacing is baked into the SVGs, so keep the cards in a
+     row on one line with no spaces between them. -->
+<div align="center">
+<a href="{SITE[1]}"><img src="{u('hero')}" width="100%" alt="{d['name']}. {KICKER.title()}. {ABOUT}" /></a><br>
+<img src="{u('graph')}" width="100%" alt="Contribution graph for the last year, in blue, refreshed daily" /><br>
+<img src="{u('activity')}" width="100%" alt="Contributions per month for the last 12 months, with streak, active days and busiest day" /><br>
+{tiles}<br>
+<picture><source media="(prefers-color-scheme: dark)" srcset="{u('title-building-dark')}" /><img src="{u('title-building-light')}" width="100%" alt="What I'm building" /></picture><br>
 {repos}
-</p>
+</div>
 
 <p align="center">
-<img src="{u('graph')}" width="100%" alt="Contribution graph for the last year">
+<a href="{SITE[1]}">{SITE[0]}</a> &nbsp;/&nbsp; <a href="{LINKEDIN}">linkedin</a> &nbsp;/&nbsp; <a href="mailto:{EMAIL}">email</a>
 </p>
 """
 
@@ -422,24 +442,29 @@ def page(d, cards, ver, src):
 def main():
     d = load()
     s = stats(d["calendar"])
-    cards = [hero(d)] + [tile(i, sp) for i, sp in enumerate(LINKS)] + [activity(d, s)] \
-        + [repo_card(i, r) for i, r in enumerate(d["repos"])] + [graph(d, s)]
+    if not STATIC and os.path.isdir(OUT):
+        for n in os.listdir(OUT):  # drop cards left over from older designs
+            if n.endswith(".svg"):
+                os.remove(os.path.join(OUT, n))
+    maxlines = max(len(wrap(r["description"] or "No description yet.", 14, "s", THIRD - 64, 4)) for r in d["repos"])
+    H = 98 + (maxlines - 1) * 21 + 24 + 36 + 14  # equal height so the row lines up
+    cards = [hero(d), graph(d, s), activity(s)] + [tile(i, t) for i, t in enumerate(TILES)]
+    cards += [heading("light"), heading("dark")] + [repo_card(i, r, H) for i, r in enumerate(d["repos"])]
     for c in cards:
         print(f"{c.name:28s}{c.save():>8,} bytes")
     if STATIC:
-        body = page(d, cards, "", "")
         with open(os.path.join(OUT, "index.html"), "w") as f:
             f.write('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">'
-                    '<title>Preview</title><style>body{max-width:830px;margin:24px auto;background:#fff;'
-                    'font-family:sans-serif}img{vertical-align:top}p{margin:0 0 12px}'
-                    '@media(prefers-color-scheme:dark){body{background:#0d1117}}</style>' + body)
+                    '<title>Preview</title><style>body{max-width:830px;margin:24px auto;background:#0d1117;'
+                    'font-family:sans-serif;color:#9aa}a{color:#6ea8ff}img{vertical-align:top}</style>'
+                    + page(d, "", "").replace("title-building-light", "title-building-dark"))  # preview page is dark
         print(f"\nStatic preview: open {os.path.join(OUT, 'index.html')}")
         return
     h = hashlib.sha1()
     for n in sorted(os.listdir(OUT)):
         h.update(open(os.path.join(OUT, n), "rb").read())
     with open(os.path.join(ROOT, "README.md"), "w") as f:
-        f.write(page(d, cards, h.hexdigest()[:8], "cards/"))  # ?v= busts GitHub's image cache
+        f.write(page(d, h.hexdigest()[:8], "cards/"))  # ?v= busts GitHub's image cache
 
 
 if __name__ == "__main__":
