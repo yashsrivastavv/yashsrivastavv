@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="270" height="104" viewBox="0 0 270 104" role="img" aria-labelledby="t d"><title id="t">Write to me (Email)</title><desc id="d">Link: Write to me</desc><style>@font-face{font-family:"Fira Code";font-weight:700;font-style:normal;src:url(data:font/woff2;base64,d09GMgABAAAAAAUAAA8AAAAACMgAAASoAAUAgwAAAAAAAAAAAAAAAAAAAAAAAAAAGhYbIBxCBmA/U1RBVCoAgQwRCAqHEIVZATYCJAMeCx4ABCAFg0QHIBvqBkiuC7jD8gU3RAkvEYqooWfaFjWeU77gbIOA6qzqUTRZigcxJ+kl8Sfq/+T0B5U2ixfx8tpLSs0Q3t7NnrrVU90JVYmYPl0KQopSYZhNk0wzm+2xPv/bAdbd+Se9Xn6By5snXEEQFeRUGFCFAZv/6pxDl9PGpt4K5wYMMbrG2jYx7akxVdbUNal8U+B5lIp4B9wOuXQDCEAHACQEAh2BAMz4YAqlpCw5G1RRAP4LAARgJo9wlEVa2bYnEh64d5YgbkrpXoEF1KFsAYtMCCkEQDJbUfZLh1BB+aLMBeamPNJGkqQRuRajSQVJmYUAFoTiBtGRMEkA2LD1twLG/vKrGFUJU22RAJSOYTFaFpcW3AfqoM4sTIGjwgGEJh1iLAKysJeG0uXoDAbwQhcaZgKIIIYEUsgDwYaPEAn4v6AVJv9Ce84aJTglGCUo5ATiv+wh2fFdHwBHgF8gpgIAypOhRUJCal0fo6zrmrvV22DWQxx0D9VjmGa+rrASnWMtHUbVQpfscRim10ABmpoVB2E16MIyzKpq32QY0Sy9dt2iNR6sLr/qbtBCNTNMUaspT0FPHZqY1CjLtOve8OaKeeq1I8bcvikYlmb0Mv1OPVfCah0GRqiubtMoNRc47uvFSWu6OmbLWPIca+ZOVjdZGl7X400nxeyjtQMi23DqFRi9IBiAXSNhUc3CKp6RJvNn0OoiadBazrPkDztZqJtsFhbRXtJqoFNl21qSiF5YEdXYcIJtZn2O1sseMQs6YB4yuuaDZw/aFX9MQ7VNDXhJ4WrbB7/8Po7/fugDB6bOW8EssJAo/mpTnmx+DnUomTTLfY1YiTZtd/5hHtdZjTBiWSY6RD1TkqfYu9ZVmxmtFjya6o4cdRtbjnLWfe3z/eYmZPOSvtQzeO3w0nbuoDeoB2N71BuVcLjuxQmd8c9HbqzKv1J38p7fjX9XWw3Prx187EM/b4TY8NeHG3Ym6u0ToV/jXhIb2NbSfhh0I3ag1Y2l0fWYKDmZycjMYjHai7IQBFyprFERFj+5p5P9u4ya5p41/u3vuadzDnvh0smjGMXEBjcIdiz471cKNuMrVz2dQ/5saPm/p5NWTj+PoX93ZN362Yzlr7nF+ObN4sVt29aEHasfz8Ira3TfVct8lzF5W3uTb33dWmX0/UXBXUbX249NuHQlpatv3IRLepCS0XnXt6b3vDh/Ze+jd+v+s+xQvZHfzfRHtcuj0vxbGJYAAAhAZdz+EZe81jrBX42y4QLAbWIHAcBdtxz5/H/Q3lQOBQ1JUfvjAQEECN8W/kn/TSjbqPP/DrCQAwT//0ULVkklm376AQjATtJoQy3qgPlkZMBEX2gIxQRsgj5L4MQqS8LIEZZMAnssBR/+WCpewgmpYWJEBOiizKKhtitGiAiCBDZMWGDM8cQdD7xxSdR1yJxsGonyY2EjoQJzZUv1eCgdSR/JsVQhpkcgA8NCiAQp5tijp2FESAnEDTeYsIUyMipxVQwJ4RPACgkR+BAXol9M7zVzWL57JEJ4VOODK+7bhYKICkUT2SsIsbuoFD+InoZyQREp7A3VmONLRSbyQFfooVEo97+SAAQ=) format("woff2")}
+svg{--paper:#ece7e1;--ink:#11111b;--muted:#5f5a66;--line:#d3ccc2;--brand:#8000ff;--cell:#11111b14}
+@media (prefers-color-scheme:dark){svg{--paper:#11111b;--ink:#ece7e1;--muted:#9c9aab;--line:#27273a;--brand:#a566ff;--cell:#ece7e112}}
+.card{fill:var(--paper);stroke:var(--line)}
+text{fill:var(--ink);font-family:'Fira Code',ui-monospace,Menlo,Consolas,monospace}
+.m{fill:var(--muted)} .br{fill:var(--brand)}
+.st{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+@keyframes grow{from{transform:scaleY(0)}}
+@keyframes pop{from{opacity:0;transform:scale(.2)}}
+@keyframes draw{from{stroke-dashoffset:1}}
+@keyframes fade{from{opacity:0}}
+.rise{animation:rise .7s cubic-bezier(.2,.7,.2,1) both}
+.fade{animation:fade .8s ease-out both}
+.grow{animation:grow .8s cubic-bezier(.2,.7,.2,1) both;transform-box:fill-box;transform-origin:50% 100%}
+.pop{animation:pop .45s cubic-bezier(.3,1.4,.5,1) both;transform-box:fill-box;transform-origin:center}
+.draw{stroke-dasharray:1;animation:draw .9s ease-out both}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.smil{display:none}}
+</style><rect class="card" x=".5" y=".5" width="269" height="103" rx="16"/><g class="rise" style="animation-delay:0.69s"><g transform="translate(28 30) scale(1.5)"><rect class="st" x="3" y="5" width="18" height="14" rx="2"/><path class="st" d="M3 7l9 6 9-6"/></g></g><g class="rise" style="animation-delay:0.74s"><text x="86" y="44" font-size="12" font-weight="700" letter-spacing="1.5" text-anchor="start" class="m">EMAIL</text></g><g class="rise" style="animation-delay:0.79s"><text x="86" y="74" font-size="19" font-weight="700" text-anchor="start">Write to me</text></g><g class="rise" style="animation-delay:0.89s"><path class="st" d="M232 52h16M242 45l7 7-7 7" stroke="var(--brand)"/></g></svg>

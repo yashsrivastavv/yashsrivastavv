@@ -1,33 +1,23 @@
-### Hi there 👋
-My name is Yash and I'm a Computer Science and Artificial Intelligence student from India. Here's some info about me!
+<p align="center">
+<img src="cards/hero.svg?v=23c5035a" width="100%" alt="Yash Srivastava. Senior Software Engineer at Naukri.com. CS and AI graduate from India.">
+</p>
 
-⚡Work Experience: <br>
-- Software Engineer at Naukri.com [Hybrid, Current]
-- Animation Intern at ConnectEd [Remote. Winter 2021]
-- Video Editor Intern at EkPrayaas NGO [Remote. Summer 2021]
+<p align="center">
+  <a href="https://yashsrivastav.vercel.app/"><img src="cards/tile-portfolio.svg?v=23c5035a" width="32.5%" alt="Portfolio: See my work"></a>
+  <a href="https://www.linkedin.com/in/yash-stv/"><img src="cards/tile-linkedin.svg?v=23c5035a" width="32.5%" alt="Linkedin: Say hello"></a>
+  <a href="mailto:iyashsrivastav@gmail.com"><img src="cards/tile-email.svg?v=23c5035a" width="32.5%" alt="Email: Write to me"></a>
+</p>
 
-🔭 Current Project:
-- QR-Integrity
-- CCTNS in GD and FIR (Python/Dask + NLTK)
+<p align="center">
+<img src="cards/activity.svg?v=23c5035a" width="100%" alt="Contributions per month, with streak, active days and busiest day">
+</p>
 
-🌱 Interests:
-- Artifical Intelligence
-- Machine Learning
+<p align="center">
+<a href="https://github.com/yashsrivastavv/QRIntegrity"><img src="cards/repo-QRIntegrity.svg?v=23c5035a" width="100%" alt="Repository QRIntegrity"></a>
+<a href="https://github.com/yashsrivastavv/plan-it"><img src="cards/repo-plan-it.svg?v=23c5035a" width="100%" alt="Repository plan-it"></a>
+<a href="https://github.com/yashsrivastavv/system-design-llds"><img src="cards/repo-system-design-llds.svg?v=23c5035a" width="100%" alt="Repository system-design-llds"></a>
+</p>
 
-💬 Reach me by email or LinkedIn: iyashsrivastav@gmail.com | https://www.linkedin.com/in/yash-stv/
-
-
-<!--
-**yashsrivastavv/yashsrivastavv** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
-
-Here are some ideas to get you started:
-
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Work Experience:
--->
+<p align="center">
+<img src="cards/graph.svg?v=23c5035a" width="100%" alt="Contribution graph for the last year">
+</p>
