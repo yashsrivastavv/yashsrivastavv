@@ -19,7 +19,7 @@ mono and pixel-font "mission" labels, a star-map contribution graph, thrust-colu
 bars, orbit rings around the name and a dithered halftone portrait in starlight.
 Stars are drawn with random.Random seeded by the card name, so output is stable.
 """
-import base64, datetime as dt, hashlib, html, json, math, os, random, subprocess, sys, tempfile
+import base64, datetime as dt, hashlib, html, json, math, os, random, re, subprocess, sys, tempfile
 from collections import OrderedDict
 
 from fontTools.ttLib import TTFont
@@ -270,6 +270,54 @@ def halftone():
 
 
 # ---- cards ----------------------------------------------------------------------------
+def light_bands(ht, r=3):
+    """The portrait's LIGHT cells, band by band, for drawing in starlight on a dark card.
+
+    make_halftone.py stores the dark (ink) cells; painting those in starlight would give a
+    photographic negative. Its subject mask isn't stored, so it is rebuilt here: dilate the
+    ink by `r` cells to close the gaps in the dithered outline, flood-fill the background in
+    from the top and side edges (the shoulders run off the bottom), grow it back by `r`, and
+    treat everything else as subject. The non-ink cells of the subject are emitted.
+    """
+    p, cols, rows, nb = ht["p"], ht["cols"], ht["rows"], len(ht["bands"])
+    per = -(-rows // nb)  # rows per band
+    ink = [[False] * cols for _ in range(rows)]
+    for m in re.finditer(r"M([\d.]+) ([\d.]+)h([\d.]+)", "".join(ht["bands"])):
+        x, y, w = (round(float(v) / p) for v in m.groups())
+        for k in range(x, min(x + w, cols)):
+            ink[y][k] = True
+
+    def dilate(g):
+        h = [[any(row[max(0, x - r):x + r + 1]) for x in range(cols)] for row in g]
+        return [[any(h[yy][x] for yy in range(max(0, y - r), min(rows, y + r + 1))) for x in range(cols)]
+                for y in range(rows)]
+
+    wall = dilate(ink)
+    bg = [[False] * cols for _ in range(rows)]
+    todo = [(0, x) for x in range(cols)] + [(y, 0) for y in range(rows)] + [(y, cols - 1) for y in range(rows)]
+    while todo:
+        y, x = todo.pop()
+        if 0 <= y < rows and 0 <= x < cols and not bg[y][x] and not wall[y][x]:
+            bg[y][x] = True
+            todo += [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
+    bg = dilate(bg)
+    out = []
+    for b0 in range(0, rows, per):
+        d = []
+        for y in range(b0, min(b0 + per, rows)):
+            x = 0
+            while x < cols:
+                if ink[y][x] or bg[y][x]:
+                    x += 1
+                    continue
+                s = x
+                while x < cols and not (ink[y][x] or bg[y][x]):
+                    x += 1
+                d.append(f"M{s * p:g} {y * p:g}h{(x - s) * p:g}v{p:g}h-{(x - s) * p:g}z")
+        out.append("".join(d))
+    return out
+
+
 def hero(d):
     c = Card("hero", W, 440, d["name"], f"{d['name']}. {ALT_ABOUT}")
     bx, by, bw, bh = 40, 50, 290, 340
@@ -280,16 +328,16 @@ def hero(d):
     name_bot = by + cap + size * 0.86 + size * 0.05
     cap_top = by + bh - (len(CAPTION) - 1) * 20 - 3 - 14
     label_y = cap_top - 22
-    starfield(c, 70, avoid=[(bx - 6, by - 6, bx + bw + 6, by + bh + 6),
-                            (tx - 12, by - 8, W - 30, name_bot + 4),
-                            (tx - 6, label_y - 14, W - 30, by + bh + 6)])
+    starfield(c, 70, avoid=[(bx - 14, by - 14, bx + bw + 14, by + bh + 14),
+                            (tx - 20, by - 16, W - 22, name_bot + 12),
+                            (tx - 16, label_y - 24, W - 22, by + bh + 14)])
     ht = halftone()
     if ht:
         # a faint printed-dot backdrop, then the dithered subject revealed band by band in starlight
         c.add(f'<defs><pattern id="dots" width="3" height="3" patternUnits="userSpaceOnUse">'
               f'<circle cx="1.5" cy="1.5" r=".75" fill="{FAINT}"/></pattern></defs>')
         c.add(c.anim(f'<rect x="{bx}" y="{by}" width="{bw}" height="{bh}" fill="url(#dots)"/>', "fade", 0.0))
-        for i, band in enumerate(ht["bands"]):
+        for i, band in enumerate(light_bands(ht)):
             if band:
                 c.add(c.anim(f'<path d="{band}" transform="translate({bx} {by})" fill="{STAR}"/>', "fade", 0.15 + i * 0.022))
     # orbit motif in the gap between the name and the caption
@@ -328,7 +376,7 @@ def activity(s):
              f"{plural(s['total'], 'contribution')} in the last 12 months. Current streak {plural(s['streak'], 'day')}, "
              f"{s['active']} of {s['days']} days active, busiest day {s['busiest']}.")
     sx = 612
-    starfield(c, 40, avoid=[(32, 40, 590, 182), (32, 214, 572, 400), (sx - 6, 40, W - 30, 410)])
+    starfield(c, 40, avoid=[(22, 30, 600, 192), (22, 204, 582, 410), (sx - 16, 30, W - 20, 420)])
     b = 1.6
     c.text(40, 58, "FLIGHT LOG  /  LAST 12 MONTHS", 11, "px", "mu", delay=b, spacing=1)
     n = f"{s['total']:,}"
@@ -365,7 +413,7 @@ def activity(s):
         c.text(bx + bw / 2, base_y + 20, dt.date(yy, mm, 1).strftime("%b").upper(), 10, "px", "mu", "middle", delay=dl)
     # right column: three figures separated by rules
     day_word = "DAY" if s["streak"] == 1 else "DAYS"
-    items = [("CURRENT ORBIT", f"{s['streak']}", day_word, f"LONGEST {s['longest']}  /  DAY STREAK"),
+    items = [("CURRENT ORBIT", f"{s['streak']}", day_word, f"LONGEST STREAK {s['longest']} " + ("DAY" if s["longest"] == 1 else "DAYS")),
              ("DAYS IN FLIGHT", f"{s['active']}", f"/ {s['days']}", "DAYS WITH A CONTRIBUTION"),
              ("PEAK THRUST", f"{s['busiest']}", "", "CONTRIBUTIONS IN ONE DAY")]
     for i, (lab, big, unit, sub) in enumerate(items):
@@ -407,8 +455,8 @@ def graph(d, s):
              f"{plural(s['total'], 'contribution')} in the last 12 months.")
     label_y = gy + 7 * pitch + 16
     ly = label_y + 34
-    starfield(c, 34, avoid=[(gx - 4, gy - 6, W - 36, label_y + 6), (32, 44, 420, 124),
-                            (W - 200, 44, W - 32, 64), (W - 240, ly - 16, W - 32, ly + 6)])
+    starfield(c, 34, avoid=[(gx - 14, gy - 16, W - 26, label_y + 16), (22, 34, 430, 134),
+                            (W - 210, 34, W - 22, 74), (22, ly - 26, W - 22, ly + 16)])
     b = 2.9
     c.text(40, 58, "STAR MAP  /  ONE STAR PER DAY", 11, "px", "mu", delay=b, spacing=1)
     c.text(W - 40, 58, "REFRESHED DAILY", 11, "px", "mu", "end", delay=b + 0.05, spacing=1)
@@ -466,7 +514,7 @@ def tile(i, spec):
     c = Card(name, THIRD, 200, f"{label.title()}: {roman}", sub, bg=bg, border=border, ink=fg)
     accent = bg == NEBULA
     mu = "" if accent else "mu"  # blue-grey is too weak on violet; use the dark ink there
-    starfield(c, 6 if accent else 14, avoid=[(26, 38, THIRD - 26, 62), (24, 94, THIRD - 24, 138), (26, 150, THIRD - 24, 170)],
+    starfield(c, 6 if accent else 14, avoid=[(16, 28, THIRD - 16, 72), (14, 84, THIRD - 14, 148), (16, 140, THIRD - 14, 180)],
               color=SPACE if accent else STAR, twinkle=0 if accent else 2)
     b = 4.1 + i * 0.12
     c.text(32, 54, f"PROBE {idx}  /  {label}", 11, "px", mu, delay=b, spacing=1)
@@ -498,8 +546,8 @@ def heading(theme):
 
 def repo_card(i, r, total):
     c = Card("repo-" + r["name"], W, 156, r["name"], f"{r['name']}: {r['description'] or 'repository'}")
-    starfield(c, 24, avoid=[(34, 44, 84, 66), (84, 28, 570, 72), (84, 80, 572, 150),
-                            (W - 66, 32, W - 34, 64), (W - 230, 86, W - 34, 128)])
+    starfield(c, 24, avoid=[(24, 34, 94, 76), (74, 18, 580, 82), (74, 70, 582, 160),
+                            (W - 76, 22, W - 24, 74), (W - 240, 76, W - 24, 138)])
     b = 5.0 + i * 0.2
     c.text(40, 60, f"L-{i + 1:02d}", 11, "px", "go", delay=b, spacing=1)
     c.text(88, 64, r["name"], 32, "g", delay=b, spacing=-0.6)
