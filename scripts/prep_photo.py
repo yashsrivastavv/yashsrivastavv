@@ -3,7 +3,7 @@
 
     pip install "rembg[cpu]" opencv-python-headless pillow numpy
     python3 scripts/prep_photo.py photo.jpeg prepped.png [--size 0.8] [--line 0.6]
-    python3 scripts/make_portrait.py prepped.png
+    python3 scripts/make_halftone.py prepped.png --cols 193 --rows 227 --p 1.5 --gamma 1.9
 
 Steps, so a busy real-world photo behaves like clean line art:
   1. cut out the subject with rembg, so walls and paintings vanish;
