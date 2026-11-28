@@ -66,6 +66,13 @@ ink = (g < thr) & ~bgm  # True = black cell, only inside the subject
 
 p = a.p
 bands = []
+# Three nested loops, one job each:
+#   1. for b0: group the grid's rows into bands of `--band` rows; each band becomes one SVG
+#      path, so the hero can fade the portrait in band by band.
+#   2. for y: walk the rows inside that band.
+#   3. while x: scan the row left to right and run-length encode it: each run of adjacent
+#      ink cells becomes a single rectangle instead of one rectangle per cell, which keeps
+#      the path data (and the card) much smaller.
 for b0 in range(0, a.rows, a.band):
     d = []
     for y in range(b0, min(b0 + a.band, a.rows)):
@@ -73,7 +80,7 @@ for b0 in range(0, a.rows, a.band):
         row = ink[y]
         while x < a.cols:
             if row[x]:
-                s = x
+                s = x  # start of a run; extend it while the cells stay ink
                 while x < a.cols and row[x]:
                     x += 1
                 d.append(f"M{s * p} {y * p}h{(x - s) * p}v{p}h-{(x - s) * p}z")

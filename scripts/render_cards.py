@@ -276,7 +276,7 @@ def light_bands(ht, r=3):
     make_halftone.py stores the dark (ink) cells; painting those in starlight would give a
     photographic negative. Its subject mask isn't stored, so it is rebuilt here: dilate the
     ink by `r` cells to close the gaps in the dithered outline, flood-fill the background in
-    from the top and side edges (the shoulders run off the bottom), grow it back by `r`, and
+    from the top and side edges (the shoulders run off the bottom), grow it back by `r` + 2, and
     treat everything else as subject. The non-ink cells of the subject are emitted.
     """
     p, cols, rows, nb = ht["p"], ht["cols"], ht["rows"], len(ht["bands"])
@@ -287,7 +287,7 @@ def light_bands(ht, r=3):
         for k in range(x, min(x + w, cols)):
             ink[y][k] = True
 
-    def dilate(g):
+    def dilate(g, r=r):
         h = [[any(row[max(0, x - r):x + r + 1]) for x in range(cols)] for row in g]
         return [[any(h[yy][x] for yy in range(max(0, y - r), min(rows, y + r + 1))) for x in range(cols)]
                 for y in range(rows)]
@@ -300,7 +300,10 @@ def light_bands(ht, r=3):
         if 0 <= y < rows and 0 <= x < cols and not bg[y][x] and not wall[y][x]:
             bg[y][x] = True
             todo += [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
-    bg = dilate(bg)
+    # grow it back by r, plus 2 more cells: the halftone's edge cells were brightened by the white
+    # backdrop when the photo was downsampled, so the outermost light cells would show as solid
+    # slivers on the dark card; keeping light cells 2+ cells inside the silhouette drops them
+    bg = dilate(bg, r + 2)
     out = []
     for b0 in range(0, rows, per):
         d = []
